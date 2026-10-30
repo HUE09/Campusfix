@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CampusFix - Campus Maintenance Reporter</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --primary: #1d4ed8;
+      --primary-hover: #1e40af;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --success: #10b981;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 24px 16px; }
+    .container { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: 1fr; gap: 24px; }
+    @media (min-width: 840px) { .container { grid-template-columns: 400px 1fr; } }
+
+    header { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+    header h1 { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+    header p { font-size: 0.875rem; color: var(--text-muted); }
+    .header-actions { display: flex; gap: 8px; align-items: center; }
+
+    .card { background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border); padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    h2 { font-size: 1.1rem; margin-bottom: 16px; font-weight: 600; }
+
+    form { display: flex; flex-direction: column; gap: 12px; }
+    label { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+    input, select, textarea { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border); font-size: 0.9rem; }
+    input:focus, select:focus, textarea:focus { outline: 2px solid var(--primary); }
+    
+    .file-input-wrapper { display: flex; flex-direction: column; gap: 6px; }
+    .preview-container { display: none; position: relative; margin-top: 6px; }
+    .preview-container img { width: 100%; max-height: 140px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
+    .remove-img-btn { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.7); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-size: 0.75rem; line-height: 1; }
+
+    .duplicate-banner {
+      display: none;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      color: #92400e;
+    }
+    .duplicate-banner button {
+      margin-top: 8px;
+      padding: 6px 12px;
+      background: #b45309;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button.primary-btn { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+    button.primary-btn:hover { background: var(--primary-hover); }
+
+    .search-filter-bar { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+    @media (min-width: 600px) { .search-filter-bar { flex-direction: row; } }
+    .search-filter-bar input { flex: 2; }
+    .search-filter-bar select { flex: 1; }
+
+    .ticket-list { display: flex; flex-direction: column; gap: 12px; }
+    .ticket { background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px; padding: 16px; display: flex; gap: 14px; align-items: flex-start; }
+    .ticket-img-thumb { width: 75px; height: 75px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; flex-shrink: 0; }
+    .ticket-main { flex: 1; min-width: 0; }
+    .ticket-meta { display: flex; gap: 8px; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; align-items: center; flex-wrap: wrap; }
+    
+    .badge { padding: 2px 7px; border-radius: 4px; font-weight: 600; font-size: 0.7rem; }
+    .badge-reported { background: #fef3c7; color: #b45309; }
+    .badge-in-progress { background: #dbeafe; color: #1e40af; }
+    .badge-resolved { background: #d1fae5; color: #065f46; }
+    
+    .upvote-btn { background: #f8fafc; border: 1px solid var(--border); color: var(--text); padding: 8px 12px; display: flex; flex-direction: column; align-items: center; min-width: 50px; font-size: 0.75rem; border-radius: 6px; cursor: pointer; flex-shrink: 0; }
+    .upvote-btn:hover { background: #e2e8f0; }
+    .upvote-btn span { font-size: 1rem; font-weight: 700; color: var(--primary); }
+
+    /* Modals */
+    .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.75); justify-content: center; align-items: center; padding: 20px; }
+    .modal-box { background: white; padding: 24px; border-radius: 8px; max-width: 400px; width: 100%; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+    .modal img { max-width: 90%; max-height: 85vh; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+
+    .staff-badge-indicator { font-size: 0.75rem; padding: 4px 8px; border-radius: 4px; font-weight: 600; }
+    .staff-badge-indicator.unverified { background: #f1f5f9; color: var(--text-muted); border: 1px dashed var(--border); }
+    .staff-badge-indicator.verified { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div>
+      <h1>CampusFix</h1>
+      <p>Crowd-sourced campus facility reporting & verified resolution tracker</p>
+    </div>
+    <div class="header-actions">
+      <span id="staffStatusIndicator" class="staff-badge-indicator unverified">Student Mode</span>
+      <button id="toggleStaffBtn" onclick="openStaffModal()" style="padding: 6px 12px; font-size: 0.75rem; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">Staff Login</button>
+      <button onclick="resetDemoData()" style="padding: 6px 10px; font-size: 0.75rem; background: #64748b; color: white; border: none; border-radius: 4px; cursor: pointer;">Reset Data</button>
+    </div>
+  </header>
+
+  <!-- Submit Form -->
+  <section class="card">
+    <h2>Report an Issue</h2>
+    <form id="issueForm">
+      <div>
+        <label for="title">Issue Title</label>
+        <input type="text" id="title" placeholder="e.g. Broken water pipe" required oninput="checkDuplicate()" />
+      </div>
+
+      <div>
+        <label for="location">Campus Location</label>
+        <input type="text" id="location" placeholder="e.g. Sutherland Hall 102" required oninput="checkDuplicate()" />
+      </div>
+
+      <div>
+        <label for="category">Category</label>
+        <select id="category" required onchange="checkDuplicate()">
+          <option value="">Select Category</option>
+          <option value="Electrical">Electrical</option>
+          <option value="Plumbing">Plumbing</option>
+          <option value="Cleaning">Cleaning</option>
+          <option value="Furniture">Furniture</option>
+          <option value="Safety">Safety</option>
+          <option value="IT">IT</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+
+      <!-- Duplicate Detection Alert -->
+      <div id="duplicateAlert" class="duplicate-banner">
+        <strong>⚠️ Similar Existing Report Found:</strong>
+        <p id="duplicateDesc" style="margin-top: 4px;"></p>
+        <button type="button" id="upvoteDuplicateBtn" onclick="confirmExistingReport()">Upvote Existing Report Instead</button>
+      </div>
+
+      <div>
+        <label for="description">Description</label>
+        <textarea id="description" rows="3" placeholder="Describe the severity, exact spot, or damage..." required></textarea>
+      </div>
+
+      <!-- Photo Attachment -->
+      <div class="file-input-wrapper">
+        <label for="photoInput">Attach Photo (Optional)</label>
+        <input type="file" id="photoInput" accept="image/*" capture="environment" onchange="handleImageSelect(event)" />
+        <div id="previewContainer" class="preview-container">
+          <img id="formImagePreview" src="" alt="Upload preview" />
+          <button type="button" class="remove-img-btn" onclick="clearSelectedImage()" title="Remove photo">✕</button>
+        </div>
+      </div>
+
+      <button type="submit" class="primary-btn" id="submitBtn">Submit Report</button>
+    </form>
+  </section>
+
+  <!-- Browse, Search & Issues Board -->
+  <section class="card">
+    <h2>Browse Reports</h2>
+    
+    <div class="search-filter-bar">
+      <input type="text" id="searchInput" placeholder="Search by location, title, or details..." oninput="renderTickets()" />
+      <select id="categoryFilter" onchange="renderTickets()">
+        <option value="all">All Categories</option>
+        <option value="Electrical">Electrical</option>
+        <option value="Plumbing">Plumbing</option>
+        <option value="Cleaning">Cleaning</option>
+        <option value="Furniture">Furniture</option>
+        <option value="Safety">Safety</option>
+        <option value="IT">IT</option>
+        <option value="Other">Other</option>
+      </select>
+      <select id="statusFilter" onchange="renderTickets()">
+        <option value="all">All Statuses</option>
+        <option value="Reported">Reported</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Resolved">Resolved</option>
+      </select>
+    </div>
+
+    <div class="ticket-list" id="ticketContainer"></div>
+  </section>
+</div>
+
+<!-- Modal for full photo view -->
+<div id="imageModal" class="modal" onclick="closeModal('imageModal')">
+  <img id="modalImg" src="" alt="Enlarged issue view" />
+</div>
+
+<!-- Modal for Staff Authorization Code -->
+<div id="staffAuthModal" class="modal">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <h3 style="margin-bottom: 8px;">Facility Staff Authentication</h3>
+    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+      Enter your staff authorization PIN to update status or mark repairs as resolved. <em>(Demo PIN: <strong>STAFF2026</strong>)</em>
+    </p>
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div>
+        <label for="staffCodeInput" style="display: block; margin-bottom: 4px;">Staff Access Code</label>
+        <input type="password" id="staffCodeInput" placeholder="Enter Staff PIN" />
+      </div>
+      <div>
+        <label for="staffIdInput" style="display: block; margin-bottom: 4px;">Staff ID / Initials (Optional)</label>
+        <input type="text" id="staffIdInput" placeholder="e.g. TECH-42" />
+      </div>
+      <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px;">
+        <button onclick="closeModal('staffAuthModal')" style="padding: 8px 14px; border: 1px solid var(--border); background: white; border-radius: 6px; cursor: pointer;">Cancel</button>
+        <button onclick="verifyStaffCode()" class="primary-btn" style="padding: 8px 16px;">Verify & Unlock</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const VALID_STAFF_CODES = ["STAFF2026", "FACILITIES123", "ADMIN01"];
+
+  const DEFAULT_ISSUES = [
+    {
+      id: "1",
+      title: "Radiator clanking & freezing air",
+      location: "Sutherland Hall 102",
+      category: "Electrical",
+      description: "Radiator clanking loudly during lecture and room temperature is dropping.",
+      photo: null,
+      status: "Reported",
+      resolvedBy: null,
+      upvotes: 4,
+      timestamp: "15 mins ago"
+    },
+    {
+      id: "2",
+      title: "Water fountain overflowing",
+      location: "Lares Building Ground Floor",
+      category: "Plumbing",
+      description: "Water fountain near vending machines will not shut off and is pooling on the floor.",
+      photo: null,
+      status: "In Progress",
+      resolvedBy: null,
+      upvotes: 8,
+      timestamp: "2 hours ago"
+    },
+    {
+      id: "3",
+      title: "Projector HDMI port damaged",
+      location: "Woodland Building 204",
+      category: "IT",
+      description: "Cable is sheared off inside the lectern HDMI port.",
+      photo: null,
+      status: "Resolved",
+      resolvedBy: "TECH-09",
+      upvotes: 1,
+      timestamp: "Yesterday"
+    }
+  ];
+
+  let issues = JSON.parse(localStorage.getItem("campusfix_tickets_v3")) || DEFAULT_ISSUES;
+  let isStaffAuthenticated = sessionStorage.getItem("campusfix_staff_auth") === "true";
+  let authenticatedStaffId = sessionStorage.getItem("campusfix_staff_id") || "STAFF";
+  let pendingImageData = null;
+  let detectedDuplicateId = null;
+
+  function updateStaffUI() {
+    const indicator = document.getElementById("staffStatusIndicator");
+    const toggleBtn = document.getElementById("toggleStaffBtn");
+
+    if (isStaffAuthenticated) {
+      indicator.className = "staff-badge-indicator verified";
+      indicator.textContent = `Staff Mode (${authenticatedStaffId})`;
+      toggleBtn.textContent = "Lock Staff Mode";
+      toggleBtn.style.background = "#64748b";
+    } else {
+      indicator.className = "staff-badge-indicator unverified";
+      indicator.textContent = "Student Mode";
+      toggleBtn.textContent = "Staff Login";
+      toggleBtn.style.background = "var(--primary)";
+    }
+  }
+
+  function openStaffModal() {
+    if (isStaffAuthenticated) {
+      // Logout
+      isStaffAuthenticated = false;
+      authenticatedStaffId = "STAFF";
+      sessionStorage.removeItem("campusfix_staff_auth");
+      sessionStorage.removeItem("campusfix_staff_id");
+      updateStaffUI();
+      renderTickets();
+    } else {
+      document.getElementById("staffCodeInput").value = "";
+      document.getElementById("staffAuthModal").style.display = "flex";
+      document.getElementById("staffCodeInput").focus();
+    }
+  }
+
+  function verifyStaffCode() {
+    const inputCode = document.getElementById("staffCodeInput").value.trim();
+    const staffId = document.getElementById("staffIdInput").value.trim() || "STAFF-ON-DUTY";
+
+    if (VALID_STAFF_CODES.includes(inputCode)) {
+      isStaffAuthenticated = true;
+      authenticatedStaffId = staffId;
+      sessionStorage.setItem("campusfix_staff_auth", "true");
+      sessionStorage.setItem("campusfix_staff_id", authenticatedStaffId);
+      closeModal("staffAuthModal");
+      updateStaffUI();
+      renderTickets();
+    } else {
+      alert("Invalid Staff Authorization PIN. Access denied.");
+    }
+  }
+
+  function saveIssues() {
+    try {
+      localStorage.setItem("campusfix_tickets_v3", JSON.stringify(issues));
+    } catch (e) {
+      alert("Storage quota exceeded. Please reduce image sizes or clear browser data.");
+    }
+  }
+
+  function resetDemoData() {
+    issues = [...DEFAULT_ISSUES];
+    saveIssues();
+    renderTickets();
+    checkDuplicate();
+  }
+
+  function handleImageSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (file.size > 4 * 1024 * 1024) {
+      alert("Please select an image smaller than 4MB.");
+      event.target.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      pendingImageData = e.target.result;
+      document.getElementById("formImagePreview").src = pendingImageData;
+      document.getElementById("previewContainer").style.display = "block";
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearSelectedImage() {
+    pendingImageData = null;
+    document.getElementById("photoInput").value = "";
+    document.getElementById("previewContainer").style.display = "none";
+    document.getElementById("formImagePreview").src = "";
+  }
+
+  function checkDuplicate() {
+    const locInput = document.getElementById("location").value.trim().toLowerCase();
+    const titleInput = document.getElementById("title").value.trim().toLowerCase();
+    const catInput = document.getElementById("category").value;
+    const banner = document.getElementById("duplicateAlert");
+    const desc = document.getElementById("duplicateDesc");
+
+    if (locInput.length < 3 || !catInput) {
+      banner.style.display = "none";
+      detectedDuplicateId = null;
+      return;
+    }
+
+    const match = issues.find(i => 
+      i.status !== "Resolved" &&
+      i.category === catInput &&
+      (i.location.toLowerCase().includes(locInput) || locInput.includes(i.location.toLowerCase()) ||
+       (titleInput.length > 3 && i.title.toLowerCase().includes(titleInput)))
+    );
+
+    if (match) {
+      detectedDuplicateId = match.id;
+      desc.textContent = `[${match.status}] "${match.title}" at ${match.location} (${match.upvotes} upvotes)`;
+      banner.style.display = "block";
+    } else {
+      banner.style.display = "none";
+      detectedDuplicateId = null;
+    }
+  }
+
+  function confirmExistingReport() {
+    if (detectedDuplicateId) {
+      upvote(detectedDuplicateId);
+      document.getElementById("issueForm").reset();
+      clearSelectedImage();
+      document.getElementById("duplicateAlert").style.display = "none";
+      alert("You confirmed and upvoted the existing ticket instead of creating a duplicate!");
+    }
+  }
+
+  function upvote(id) {
+    const ticket = issues.find(i => i.id === id);
+    if (ticket) {
+      ticket.upvotes += 1;
+      saveIssues();
+      renderTickets();
+    }
+  }
+
+  // Staff-Restricted Status Change
+  function promptStatusChange(ticketId, newStatus) {
+    if (!isStaffAuthenticated) {
+      alert("Only verified campus staff can change status or resolve reports.");
+      openStaffModal();
+      renderTickets();
+      return;
+    }
+
+    const ticket = issues.find(i => i.id === ticketId);
+    if (!ticket) return;
+
+    ticket.status = newStatus;
+    if (newStatus === "Resolved") {
+      ticket.resolvedBy = authenticatedStaffId;
+    } else {
+      ticket.resolvedBy = null;
+    }
+
+    saveIssues();
+    renderTickets();
+  }
+
+  function openModal(id, imgSrc) {
+    if (imgSrc) {
+      document.getElementById("modalImg").src = imgSrc;
+    }
+    document.getElementById(id).style.display = "flex";
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).style.display = "none";
+  }
+
+  function renderTickets() {
+    const container = document.getElementById("ticketContainer");
+    const query = document.getElementById("searchInput").value.toLowerCase().trim();
+    const categoryFilter = document.getElementById("categoryFilter").value;
+    const statusFilter = document.getElementById("statusFilter").value;
+
+    const filtered = issues.filter(t => {
+      const matchesSearch = query === "" || 
+        t.title.toLowerCase().includes(query) ||
+        t.location.toLowerCase().includes(query) ||
+        t.description.toLowerCase().includes(query);
+      const matchesCategory = categoryFilter === "all" || t.category === categoryFilter;
+      const matchesStatus = statusFilter === "all" || t.status === statusFilter;
+      return matchesSearch && matchesCategory && matchesStatus;
+    });
+
+    if (filtered.length === 0) {
+      container.innerHTML = `<p style="color: var(--text-muted); font-size: 0.9rem; padding: 12px 0;">No matching reports found.</p>`;
+      return;
+    }
+
+    filtered.sort((a, b) => b.upvotes - a.upvotes);
+
+    container.innerHTML = filtered.map(t => {
+      const badgeClass = t.status === "Reported" ? "badge-reported" : 
+                         t.status === "In Progress" ? "badge-in-progress" : "badge-resolved";
+      return `
+        <div class="ticket">
+          ${t.photo ? `<img src="${t.photo}" class="ticket-img-thumb" onclick="openModal('imageModal', '${t.photo}')" title="Click to view full photo" alt="Report photo" />` : ''}
+          <div class="ticket-main">
+            <div class="ticket-meta">
+              <span class="badge ${badgeClass}">${t.status.toUpperCase()}</span>
+              <span>•</span>
+              <strong>${t.category}</strong>
+              <span>•</span>
+              <span>📍 ${t.location}</span>
+              <span>•</span>
+              <span>${t.timestamp}</span>
+            </div>
+            <h3 style="font-size: 1.05rem; margin-bottom: 4px;">${t.title}</h3>
+            <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 8px;">${t.description}</p>
+            
+            ${t.status === "Resolved" && t.resolvedBy ? `
+              <p style="font-size: 0.75rem; color: var(--success); font-weight: 600; margin-bottom: 8px;">
+                ✓ Resolved & Inspected by ${t.resolvedBy}
+              </p>
+            ` : ''}
+
+            <!-- Staff Status Control -->
+            <div style="font-size: 0.75rem; display: flex; align-items: center; gap: 6px;">
+              <span style="color: var(--text-muted);">Manage Stage:</span>
+              ${isStaffAuthenticated ? `
+                <select onchange="promptStatusChange('${t.id}', this.value)" style="width: auto; padding: 2px 6px; font-size: 0.75rem; border: 1px solid var(--primary);">
+                  <option value="Reported" ${t.status === "Reported" ? "selected" : ""}>Reported</option>
+                  <option value="In Progress" ${t.status === "In Progress" ? "selected" : ""}>In Progress</option>
+                  <option value="Resolved" ${t.status === "Resolved" ? "selected" : ""}>Resolved</option>
+                </select>
+              ` : `
+                <button onclick="promptStatusChange('${t.id}', '')" style="background: none; border: 1px dashed var(--border); padding: 2px 6px; font-size: 0.75rem; border-radius: 4px; cursor: pointer; color: var(--text-muted);">
+                  🔒 Staff Code Required to Change
+                </button>
+              `}
+            </div>
+          </div>
+          <button class="upvote-btn" onclick="upvote('${t.id}')" title="Upvote to raise urgency">
+            <span>▲</span>
+            ${t.upvotes}
+          </button>
+        </div>
+      `;
+    }).join("");
+  }
+
+  document.getElementById("issueForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+    const title = document.getElementById("title").value.trim();
+    const loc = document.getElementById("location").value.trim();
+    const cat = document.getElementById("category").value;
+    const desc = document.getElementById("description").value.trim();
+
+    const newTicket = {
+      id: Date.now().toString(),
+      title: title,
+      location: loc,
+      category: cat,
+      description: desc,
+      photo: pendingImageData,
+      status: "Reported",
+      resolvedBy: null,
+      upvotes: 1,
+      timestamp: "Just now"
+    };
+
+    issues.unshift(newTicket);
+    saveIssues();
+    renderTickets();
+
+    this.reset();
+    clearSelectedImage();
+    document.getElementById("duplicateAlert").style.display = "none";
+  });
+
+  updateStaffUI();
+  renderTickets();
+</script>
+</body>
+</html>
